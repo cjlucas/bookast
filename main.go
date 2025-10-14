@@ -109,9 +109,10 @@ func scanDirectory(dir string, baseURL string) (*Podcast, error) {
 
 	sort.Strings(audioFiles)
 
-	for _, filename := range audioFiles {
+	now := time.Now()
+	for i, filename := range audioFiles {
 		fullPath := filepath.Join(dir, filename)
-		episode, err := processAudioFile(fullPath, baseURL, dir)
+		episode, err := processAudioFile(fullPath, baseURL, dir, now.Add(time.Duration(i)*time.Second))
 		if err != nil {
 			return nil, fmt.Errorf("failed to process %s: %v", filename, err)
 		}
@@ -121,7 +122,7 @@ func scanDirectory(dir string, baseURL string) (*Podcast, error) {
 	return podcast, nil
 }
 
-func processAudioFile(filePath string, baseURL string, baseDir string) (*Episode, error) {
+func processAudioFile(filePath string, baseURL string, baseDir string, pubDate time.Time) (*Episode, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -163,7 +164,7 @@ func processAudioFile(filePath string, baseURL string, baseDir string) (*Episode
 		Description: description,
 		FilePath:    filePath,
 		FileSize:    fileInfo.Size(),
-		PubDate:     fileInfo.ModTime(),
+		PubDate:     pubDate,
 		URL:         fileURL,
 	}
 

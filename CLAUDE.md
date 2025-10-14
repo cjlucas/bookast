@@ -22,6 +22,7 @@ This is ESSENTIAL for maintaining project context across conversations.
 - **Error handling**: Unix conventions - errors to stderr, proper exit codes, fail on unparseable files
 - **Git workflow**: No branches - commit directly to main
 - **Description fallback**: Use title as description when comment is empty or contains technical metadata like "iTunPGAP"
+- **Episode pubDate**: Use current time + index (1 second intervals) for consistent chronological ordering in podcast clients
 
 # debugging-tips
 - **Metadata debugging**: Use `mediainfo <audiofile>` to inspect actual metadata fields and compare against RSS output
