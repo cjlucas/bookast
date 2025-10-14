@@ -24,6 +24,11 @@ This is ESSENTIAL for maintaining project context across conversations.
 - **Description fallback**: Use title as description when comment is empty or contains technical metadata like "iTunPGAP"
 - **Episode pubDate**: Use current time + index (1 second intervals) for consistent chronological ordering in podcast clients
 
+# library-selection-criteria
+- **Popularity**: Must be widely used (check GitHub stars, imports, usage)
+- **Active maintenance**: Recent commits, active issues/PRs, responsive maintainers
+- **These are critical factors when choosing external dependencies**
+
 # debugging-tips
 - **Metadata debugging**: Use `mediainfo <audiofile>` to inspect actual metadata fields and compare against RSS output
 - **URL encoding verification**: Check generated RSS URLs match expected encoding patterns

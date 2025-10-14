@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -122,6 +124,26 @@ func scanDirectory(dir string, baseURL string) (*Podcast, error) {
 	return podcast, nil
 }
 
+func getDurationWithFFmpeg(filePath string) (time.Duration, error) {
+	cmd := exec.Command("ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", filePath)
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, fmt.Errorf("ffprobe failed: %v", err)
+	}
+
+	durationStr := strings.TrimSpace(string(output))
+	if durationStr == "" {
+		return 0, fmt.Errorf("no duration found in ffprobe output")
+	}
+
+	durationSeconds, err := strconv.ParseFloat(durationStr, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse duration: %v", err)
+	}
+
+	return time.Duration(durationSeconds * float64(time.Second)), nil
+}
+
 func processAudioFile(filePath string, baseURL string, baseDir string, pubDate time.Time) (*Episode, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -159,10 +181,16 @@ func processAudioFile(filePath string, baseURL string, baseDir string, pubDate t
 		description = title
 	}
 
+	duration, err := getDurationWithFFmpeg(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get duration: %v", err)
+	}
+
 	episode := &Episode{
 		Title:       title,
 		Description: description,
 		FilePath:    filePath,
+		Duration:    duration,
 		FileSize:    fileInfo.Size(),
 		PubDate:     pubDate,
 		URL:         fileURL,
@@ -189,6 +217,9 @@ func generateRSS(podcast *Podcast) string {
 		sb.WriteString(fmt.Sprintf("    <title>%s</title>\n", escapeXML(episode.Title)))
 		sb.WriteString(fmt.Sprintf("    <description>%s</description>\n", escapeXML(episode.Description)))
 		sb.WriteString(fmt.Sprintf("    <pubDate>%s</pubDate>\n", episode.PubDate.Format(time.RFC1123Z)))
+		if episode.Duration > 0 {
+			sb.WriteString(fmt.Sprintf("    <itunes:duration>%s</itunes:duration>\n", formatDuration(episode.Duration)))
+		}
 		sb.WriteString(fmt.Sprintf("    <enclosure url=\"%s\" length=\"%d\" type=\"%s\" />\n",
 			escapeXML(episode.URL), episode.FileSize, getMimeType(episode.FilePath)))
 		sb.WriteString(fmt.Sprintf("    <guid>%s</guid>\n", escapeXML(episode.URL)))
@@ -217,6 +248,17 @@ func getMimeType(filePath string) string {
 	default:
 		return "audio/mpeg"
 	}
+}
+
+func formatDuration(d time.Duration) string {
+	hours := int(d.Hours())
+	minutes := int(d.Minutes()) % 60
+	seconds := int(d.Seconds()) % 60
+
+	if hours > 0 {
+		return fmt.Sprintf("%d:%02d:%02d", hours, minutes, seconds)
+	}
+	return fmt.Sprintf("%d:%02d", minutes, seconds)
 }
 
 func escapeXML(s string) string {
