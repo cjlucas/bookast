@@ -32,3 +32,6 @@ This is ESSENTIAL for maintaining project context across conversations.
 # debugging-tips
 - **Metadata debugging**: Use `mediainfo <audiofile>` to inspect actual metadata fields and compare against RSS output
 - **URL encoding verification**: Check generated RSS URLs match expected encoding patterns
+
+# readme-philosophy
+Keep READMEs minimal and focused on the essentials that don't change often. Avoid sections like "Features" and "File structure" that become stale as the project evolves. Focus on: description, requirements, installation, usage only.
