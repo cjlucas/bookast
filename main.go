@@ -23,6 +23,7 @@ type Episode struct {
 	FileSize    int64
 	PubDate     time.Time
 	URL         string
+	EpisodeNum  int
 }
 
 type Podcast struct {
@@ -114,7 +115,7 @@ func scanDirectory(dir string, baseURL string) (*Podcast, error) {
 	now := time.Now()
 	for i, filename := range audioFiles {
 		fullPath := filepath.Join(dir, filename)
-		episode, err := processAudioFile(fullPath, baseURL, dir, now.Add(time.Duration(i)*time.Second))
+		episode, err := processAudioFile(fullPath, baseURL, dir, now.Add(time.Duration(i)*time.Second), i+1)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process %s: %v", filename, err)
 		}
@@ -144,7 +145,7 @@ func getDurationWithFFmpeg(filePath string) (time.Duration, error) {
 	return time.Duration(durationSeconds * float64(time.Second)), nil
 }
 
-func processAudioFile(filePath string, baseURL string, baseDir string, pubDate time.Time) (*Episode, error) {
+func processAudioFile(filePath string, baseURL string, baseDir string, pubDate time.Time, episodeNum int) (*Episode, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -194,6 +195,7 @@ func processAudioFile(filePath string, baseURL string, baseDir string, pubDate t
 		FileSize:    fileInfo.Size(),
 		PubDate:     pubDate,
 		URL:         fileURL,
+		EpisodeNum:  episodeNum,
 	}
 
 	return episode, nil
@@ -210,6 +212,7 @@ func generateRSS(podcast *Podcast) string {
 	sb.WriteString(fmt.Sprintf("  <title>%s</title>\n", escapeXML(podcast.Title)))
 	sb.WriteString(fmt.Sprintf("  <description>%s</description>\n", escapeXML(podcast.Description)))
 	sb.WriteString("  <language>en-us</language>\n")
+	sb.WriteString("  <itunes:type>serial</itunes:type>\n")
 	sb.WriteString(fmt.Sprintf("  <lastBuildDate>%s</lastBuildDate>\n", time.Now().Format(time.RFC1123Z)))
 
 	for _, episode := range podcast.Episodes {
@@ -217,6 +220,7 @@ func generateRSS(podcast *Podcast) string {
 		sb.WriteString(fmt.Sprintf("    <title>%s</title>\n", escapeXML(episode.Title)))
 		sb.WriteString(fmt.Sprintf("    <description>%s</description>\n", escapeXML(episode.Description)))
 		sb.WriteString(fmt.Sprintf("    <pubDate>%s</pubDate>\n", episode.PubDate.Format(time.RFC1123Z)))
+		sb.WriteString(fmt.Sprintf("    <itunes:episode>%d</itunes:episode>\n", episode.EpisodeNum))
 		if episode.Duration > 0 {
 			sb.WriteString(fmt.Sprintf("    <itunes:duration>%s</itunes:duration>\n", formatDuration(episode.Duration)))
 		}
