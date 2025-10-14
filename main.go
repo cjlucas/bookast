@@ -27,9 +27,10 @@ type Episode struct {
 }
 
 type Podcast struct {
-	Title       string
-	Description string
-	Episodes    []Episode
+	Title        string
+	Description  string
+	Episodes     []Episode
+	CoverArtURL  string
 }
 
 func main() {
@@ -90,13 +91,19 @@ func scanDirectory(dir string, baseURL string) (*Podcast, error) {
 	}
 
 	var audioFiles []string
-	supportedExts := map[string]bool{
+	var coverArtFile string
+	supportedAudioExts := map[string]bool{
 		".mp3":  true,
 		".m4a":  true,
 		".m4b":  true,
 		".aac":  true,
 		".flac": true,
 		".ogg":  true,
+	}
+	supportedImageExts := map[string]bool{
+		".jpg":  true,
+		".jpeg": true,
+		".png":  true,
 	}
 
 	for _, entry := range entries {
@@ -105,8 +112,10 @@ func scanDirectory(dir string, baseURL string) (*Podcast, error) {
 		}
 
 		ext := strings.ToLower(filepath.Ext(entry.Name()))
-		if supportedExts[ext] {
+		if supportedAudioExts[ext] {
 			audioFiles = append(audioFiles, entry.Name())
+		} else if supportedImageExts[ext] && coverArtFile == "" {
+			coverArtFile = entry.Name()
 		}
 	}
 
@@ -120,6 +129,14 @@ func scanDirectory(dir string, baseURL string) (*Podcast, error) {
 			return nil, fmt.Errorf("failed to process %s: %v", filename, err)
 		}
 		podcast.Episodes = append(podcast.Episodes, *episode)
+	}
+
+	// Set cover art URL if image file found
+	if coverArtFile != "" {
+		dirName := filepath.Base(dir)
+		escapedDir := url.PathEscape(dirName)
+		escapedFile := url.PathEscape(coverArtFile)
+		podcast.CoverArtURL = strings.TrimSuffix(baseURL, "/") + "/" + escapedDir + "/" + escapedFile
 	}
 
 	return podcast, nil
@@ -213,6 +230,9 @@ func generateRSS(podcast *Podcast) string {
 	sb.WriteString(fmt.Sprintf("  <description>%s</description>\n", escapeXML(podcast.Description)))
 	sb.WriteString("  <language>en-us</language>\n")
 	sb.WriteString("  <itunes:type>serial</itunes:type>\n")
+	if podcast.CoverArtURL != "" {
+		sb.WriteString(fmt.Sprintf("  <itunes:image href=\"%s\" />\n", escapeXML(podcast.CoverArtURL)))
+	}
 	sb.WriteString(fmt.Sprintf("  <lastBuildDate>%s</lastBuildDate>\n", time.Now().Format(time.RFC1123Z)))
 
 	for _, episode := range podcast.Episodes {
