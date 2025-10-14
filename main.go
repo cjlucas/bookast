@@ -151,8 +151,9 @@ func processAudioFile(filePath string, baseURL string, baseDir string) (*Episode
 	}
 
 	description := ""
-	if metadata.Comment() != "" {
-		description = metadata.Comment()
+	comment := metadata.Comment()
+	if comment != "" && comment != "iTunPGAP" {
+		description = comment
 	} else {
 		description = title
 	}

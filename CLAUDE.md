@@ -21,3 +21,8 @@ This is ESSENTIAL for maintaining project context across conversations.
 - **CLI interface**: `bookast --base-url <url> <directory>` (base-url is required)
 - **Error handling**: Unix conventions - errors to stderr, proper exit codes, fail on unparseable files
 - **Git workflow**: No branches - commit directly to main
+- **Description fallback**: Use title as description when comment is empty or contains technical metadata like "iTunPGAP"
+
+# debugging-tips
+- **Metadata debugging**: Use `mediainfo <audiofile>` to inspect actual metadata fields and compare against RSS output
+- **URL encoding verification**: Check generated RSS URLs match expected encoding patterns
