@@ -8,64 +8,6 @@ import (
 	"time"
 )
 
-func TestEscapeXML(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "no special characters",
-			input:    "hello world",
-			expected: "hello world",
-		},
-		{
-			name:     "ampersand",
-			input:    "Tom & Jerry",
-			expected: "Tom &amp; Jerry",
-		},
-		{
-			name:     "less than",
-			input:    "a < b",
-			expected: "a &lt; b",
-		},
-		{
-			name:     "greater than",
-			input:    "a > b",
-			expected: "a &gt; b",
-		},
-		{
-			name:     "double quotes",
-			input:    `say "hello"`,
-			expected: `say &quot;hello&quot;`,
-		},
-		{
-			name:     "single quotes",
-			input:    "it's cool",
-			expected: "it&#39;s cool",
-		},
-		{
-			name:     "multiple special characters",
-			input:    `<tag attr="value">text & more</tag>`,
-			expected: `&lt;tag attr=&quot;value&quot;&gt;text &amp; more&lt;/tag&gt;`,
-		},
-		{
-			name:     "empty string",
-			input:    "",
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := escapeXML(tt.input)
-			if result != tt.expected {
-				t.Errorf("escapeXML(%q) = %q, want %q", tt.input, result, tt.expected)
-			}
-		})
-	}
-}
-
 func TestFormatDuration(t *testing.T) {
 	tests := []struct {
 		name     string

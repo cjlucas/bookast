@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/xml"
 	"flag"
 	"fmt"
 	"net/url"
@@ -31,6 +32,44 @@ type Podcast struct {
 	Description  string
 	Episodes     []Episode
 	CoverArtURL  string
+}
+
+// RSS XML structures
+type RSS struct {
+	XMLName  xml.Name `xml:"rss"`
+	Version  string   `xml:"version,attr"`
+	ITunesNS string   `xml:"xmlns:itunes,attr"`
+	Channel  *Channel `xml:"channel"`
+}
+
+type Channel struct {
+	Title         string        `xml:"title"`
+	Description   string        `xml:"description"`
+	Language      string        `xml:"language"`
+	ItunesType    string        `xml:"itunes:type"`
+	ItunesImage   *ItunesImage  `xml:"itunes:image,omitempty"`
+	LastBuildDate string        `xml:"lastBuildDate"`
+	Items         []Item        `xml:"item"`
+}
+
+type ItunesImage struct {
+	Href string `xml:"href,attr"`
+}
+
+type Item struct {
+	Title          string     `xml:"title"`
+	Description    string     `xml:"description"`
+	PubDate        string     `xml:"pubDate"`
+	ItunesEpisode  int        `xml:"itunes:episode"`
+	ItunesDuration string     `xml:"itunes:duration,omitempty"`
+	Enclosure      *Enclosure `xml:"enclosure"`
+	GUID           string     `xml:"guid"`
+}
+
+type Enclosure struct {
+	URL    string `xml:"url,attr"`
+	Length int64  `xml:"length,attr"`
+	Type   string `xml:"type,attr"`
 }
 
 func main() {
@@ -219,41 +258,59 @@ func processAudioFile(filePath string, baseURL string, baseDir string, pubDate t
 }
 
 func generateRSS(podcast *Podcast) string {
-	var sb strings.Builder
-
-	sb.WriteString(`<?xml version="1.0" encoding="UTF-8"?>`)
-	sb.WriteString("\n")
-	sb.WriteString(`<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">`)
-	sb.WriteString("\n<channel>\n")
-
-	sb.WriteString(fmt.Sprintf("  <title>%s</title>\n", escapeXML(podcast.Title)))
-	sb.WriteString(fmt.Sprintf("  <description>%s</description>\n", escapeXML(podcast.Description)))
-	sb.WriteString("  <language>en-us</language>\n")
-	sb.WriteString("  <itunes:type>serial</itunes:type>\n")
-	if podcast.CoverArtURL != "" {
-		sb.WriteString(fmt.Sprintf("  <itunes:image href=\"%s\" />\n", escapeXML(podcast.CoverArtURL)))
-	}
-	sb.WriteString(fmt.Sprintf("  <lastBuildDate>%s</lastBuildDate>\n", time.Now().Format(time.RFC1123Z)))
-
-	for _, episode := range podcast.Episodes {
-		sb.WriteString("  <item>\n")
-		sb.WriteString(fmt.Sprintf("    <title>%s</title>\n", escapeXML(episode.Title)))
-		sb.WriteString(fmt.Sprintf("    <description>%s</description>\n", escapeXML(episode.Description)))
-		sb.WriteString(fmt.Sprintf("    <pubDate>%s</pubDate>\n", episode.PubDate.Format(time.RFC1123Z)))
-		sb.WriteString(fmt.Sprintf("    <itunes:episode>%d</itunes:episode>\n", episode.EpisodeNum))
-		if episode.Duration > 0 {
-			sb.WriteString(fmt.Sprintf("    <itunes:duration>%s</itunes:duration>\n", formatDuration(episode.Duration)))
+	// Build items
+	items := make([]Item, 0, len(podcast.Episodes))
+	for _, ep := range podcast.Episodes {
+		item := Item{
+			Title:         ep.Title,
+			Description:   ep.Description,
+			PubDate:       ep.PubDate.Format(time.RFC1123Z),
+			ItunesEpisode: ep.EpisodeNum,
+			Enclosure: &Enclosure{
+				URL:    ep.URL,
+				Length: ep.FileSize,
+				Type:   getMimeType(ep.FilePath),
+			},
+			GUID: ep.URL,
 		}
-		sb.WriteString(fmt.Sprintf("    <enclosure url=\"%s\" length=\"%d\" type=\"%s\" />\n",
-			escapeXML(episode.URL), episode.FileSize, getMimeType(episode.FilePath)))
-		sb.WriteString(fmt.Sprintf("    <guid>%s</guid>\n", escapeXML(episode.URL)))
-		sb.WriteString("  </item>\n")
+
+		if ep.Duration > 0 {
+			item.ItunesDuration = formatDuration(ep.Duration)
+		}
+
+		items = append(items, item)
 	}
 
-	sb.WriteString("</channel>\n")
-	sb.WriteString("</rss>\n")
+	// Build channel
+	channel := &Channel{
+		Title:         podcast.Title,
+		Description:   podcast.Description,
+		Language:      "en-us",
+		ItunesType:    "serial",
+		LastBuildDate: time.Now().Format(time.RFC1123Z),
+		Items:         items,
+	}
 
-	return sb.String()
+	if podcast.CoverArtURL != "" {
+		channel.ItunesImage = &ItunesImage{
+			Href: podcast.CoverArtURL,
+		}
+	}
+
+	// Build RSS
+	rss := &RSS{
+		Version:  "2.0",
+		ITunesNS: "http://www.itunes.com/dtds/podcast-1.0.dtd",
+		Channel:  channel,
+	}
+
+	// Marshal to XML
+	output, err := xml.MarshalIndent(rss, "", "  ")
+	if err != nil {
+		return ""
+	}
+
+	return xml.Header + string(output) + "\n"
 }
 
 func getMimeType(filePath string) string {
@@ -283,13 +340,4 @@ func formatDuration(d time.Duration) string {
 		return fmt.Sprintf("%d:%02d:%02d", hours, minutes, seconds)
 	}
 	return fmt.Sprintf("%d:%02d", minutes, seconds)
-}
-
-func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&#39;")
-	return s
 }
