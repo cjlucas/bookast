@@ -35,3 +35,13 @@ This is ESSENTIAL for maintaining project context across conversations.
 
 # readme-philosophy
 Keep READMEs minimal and focused on the essentials that don't change often. Avoid sections like "Features" and "File structure" that become stale as the project evolves. Focus on: description, requirements, installation, usage only.
+
+# testing-strategy
+- **Test scope progression**: Unit tests (smallest scope) → Integration tests → End-to-end tests
+- **Unit tests**: Cover pure utility functions with table-driven tests
+- **Integration tests**: Test functions that interact with files and external tools (ffprobe)
+- **End-to-end tests**: Use golden file approach - generate RSS output and compare against committed fixtures
+- **Golden file workflow**: Run `./generate_test_fixtures.sh` when intentionally changing RSS output format
+- **Test fixtures**: Minimal audio files created with ffmpeg; MP3s use ID3 tags via id3tag tool, M4A uses native metadata
+- **Timestamp handling**: Normalize timestamps in golden file comparison since they change on each run
+- **Test philosophy**: Golden files are better than brittle string assertions - easier to maintain and review changes
